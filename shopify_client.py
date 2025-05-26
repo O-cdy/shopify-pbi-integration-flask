@@ -1,9 +1,7 @@
 import requests
 from collections import defaultdict
 from datetime import datetime
-
-SHOPIFY_DOMAIN = "homatics-tv.myshopify.com"
-ACCESS_TOKEN = "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"
+from config import SHOPIFY_DOMAIN, ACCESS_TOKEN, API_VERSION, START_DATE
 
 headers = {
     "X-Shopify-Access-Token": ACCESS_TOKEN,
@@ -11,17 +9,53 @@ headers = {
 }
 
 def fetch_orders():
-    url = f"https://{SHOPIFY_DOMAIN}/admin/api/2023-10/orders.json?status=any"
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    orders = response.json().get("orders", [])
+    """拉取所有订单，含分页处理"""
+    orders = []
+    url = f"https://{SHOPIFY_DOMAIN}/admin/api/{API_VERSION}/orders.json?status=any&limit=250"
+    while url:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        orders.extend(data.get("orders", []))
+
+        link = response.headers.get("Link")
+        if link and 'rel="next"' in link:
+            url = link.split(";")[0].strip("<> ")
+        else:
+            url = None
     return orders
 
 def aggregate_orders(orders):
-    summary = defaultdict(lambda: defaultdict(float))
-    for o in orders:
-        date_str = o["created_at"][:10]  # e.g., "2025-05-26"
-        country = (o.get("shipping_address") or {}).get("country_code", "Unknown")
-        total = float(o.get("total_price", 0))
-        summary[date_str][country] += total
-    return summary
+    """聚合订单数据，并过滤财年起始日之后的内容"""
+    summary = defaultdict(lambda: {"net_sales": 0.0, "orders": 0})
+    start_date = datetime.strptime(START_DATE, "%Y-%m-%d")
+
+    for order in orders:
+        created_raw = order.get("created_at", "")
+        try:
+            created_dt = datetime.strptime(created_raw[:10], "%Y-%m-%d")
+        except ValueError:
+            continue
+
+        # 财年过滤
+        if created_dt < start_date:
+            continue
+
+        country = (
+            order.get("shipping_address", {}) or {}
+        ).get("country", "Unknown")
+        key = (country, created_dt.strftime("%Y/%m/%d"))
+        summary[key]["net_sales"] += float(order.get("total_price", 0.0))
+        summary[key]["orders"] += 1
+
+    result = [
+        {
+            "Shipping country": country,
+            "Day": day,
+            "Net sales": round(metrics["net_sales"], 2),
+            "Orders": metrics["orders"]
+        }
+        for (country, day), metrics in summary.items()
+    ]
+
+    return result

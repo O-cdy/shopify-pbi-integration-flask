@@ -1,11 +1,7 @@
 services:
   - type: web
-    name: shopify-pbi-integration-flask
+    name: shopify-daily-sales
     env: python
-    buildCommand: ""
-    startCommand: py app.py
-    envVars:
-      - key: SHOPIFY_DOMAIN
-        value: homatics-tv.myshopify.com
-      - key: ACCESS_TOKEN
-        value: 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
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python app.py"
