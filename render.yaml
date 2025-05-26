@@ -4,4 +4,4 @@ services:
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python app.py"
+    startCommand: "python app.py"  # 如用 gunicorn，请改为：gunicorn app:app
