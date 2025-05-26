@@ -57,5 +57,4 @@ def aggregate_orders(orders):
         }
         for (country, day), metrics in summary.items()
     ]
-
     return result
