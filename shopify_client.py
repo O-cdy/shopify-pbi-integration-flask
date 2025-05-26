@@ -11,7 +11,7 @@ headers = {
 def fetch_orders():
     """拉取所有订单，含分页处理"""
     orders = []
-    url = f"https://{SHOPIFY_DOMAIN}/admin/api/{API_VERSION}/orders.json?status=any&limit=250"
+    url = f"https://{SHOPIFY_DOMAIN}/admin/api/{API_VERSION}/orders.json?status=any&limit=250&created_at_min={START_DATE}T00:00:00Z"
     while url:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
